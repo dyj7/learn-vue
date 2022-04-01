@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <title>Document</title>
+  </head>
+  <body>
+    <div>
+      <button class="btn">GET</button>
+      <button class="btn">POST</button>
+      <button class="btn">PUT</button>
+      <button class="btn">DELETE</button>
+    </div>
+  </body>
+  <script>
+    // 添加请求拦截器
+    axios.interceptors.request.use(
+      function (config) {
+        // 在发送请求之前做些什么
+        throw "123";
+        console.log("请求拦截");
+        return config;
+      },
+      function (error) {
+        console.log("请求拦截-失败");
+        // 对请求错误做些什么
+        return Promise.reject(error);
+      }
+    );
+
+    // 添加响应拦截器
+    axios.interceptors.response.use(
+      function (response) {
+        // 2xx 范围内的状态码都会触发该函数。
+        // 对响应数据做点什么
+        console.log("响应拦截");
+        return response;
+      },
+      function (error) {
+        // 超出 2xx 范围的状态码都会触发该函数。
+        // 对响应错误做点什么
+        console.log("响应拦截-失败");
+        return Promise.reject(error);
+      }
+    );
+    const btns = document.querySelectorAll(".btn");
+    btns[0].onclick = async () => {
+      axios({
+        method: "GET",
+        url: "http://localhost:3000/posts/1",
+      })
+        .then((res) => {
+          console.log(res);
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    };
+    btns[1].onclick = async () => {
+      const res = await axios({
+        method: "POST",
+        url: "http://localhost:3000/posts",
+        data: {
+          title: "333",
+          author: "張三",
+        },
+      });
+      console.log(res);
+    };
+    btns[2].onclick = async () => {
+      const res = await axios({
+        method: "PUT",
+        url: "http://localhost:3000/posts/3",
+        data: {
+          title: "333",
+          author: "李四",
+        },
+      });
+      console.log(res);
+    };
+    btns[3].onclick = async () => {
+      const res = await axios({
+        method: "DELETE",
+        url: "http://localhost:3000/posts/4",
+      });
+      console.log(res);
+    };
+  </script>
+</html>
