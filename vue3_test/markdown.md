@@ -116,3 +116,107 @@ const p = new Proxy(person,{
 #### reactive 和 ref 对比
 
 -
+
+
+### setup 注意点
+
+- setup 在 beforeCreate 之前执行，this 是 undefined
+- setup 接受两个参数
+  - props: Proxy 对象，包含组件外部传递过来且组件内部声明接受了的属性
+  - context: 上下文对象
+    - attrs: 包含组件外部传递过来，但没有在 props 配置声明的属性，相当于 `this.$attrs`
+    - slots: 收到的插槽内容，相当于 `this.$slots`
+    - emit：分发自定义事件的函数，相当于 `this.$emit`
+
+```js
+<Demo @hello='onChildClick' msg='123' name='aaa' age='18'>
+  <template v-slot:slot-1> // slot="slot-1"
+    <span>123</span>
+  </template>
+</Demo>
+
+// Demo component
+
+
+props: ['msg', 'name'],
+emits: ['hello'], // 父级绑定的事件
+setup: (props, context){
+// context.attrs 子级未在 props 中接受的父级传递的参数,此处为 age
+// context.emit('hello', params)  触发自定义事件
+// context.slots,使用 v-slot 会拿到正常命名的插槽，其余方式（包括 slot="xx")均为default 
+}
+```
+
+## computed
+
+```js
+import { computed } from 'vue'
+export default {
+  setup(){
+    const person = {
+      firstName: '张',
+      lastName: '三'
+    }
+    // 未考虑计算属性被修改的情况
+    person.fullName = computed(()=>{
+      return person.firstName + '-' + person.lastName
+    })
+    // 考虑读写
+    person.fullName = computed({
+      get(){
+        return person.firstName + person.lastName
+      },
+      set(value){
+        const nameArr = value.split('-');
+        person.firstName = nameArr[0];
+        person.lastName = nameArr[1];
+      }
+    })
+    return {
+      person
+    }
+  }
+}
+```
+
+## watch
+
+- 监视 rective 定义的响应式数据： oldVal 无法争取获取，强制开启 deeP:true,(deep配置无效)
+- 监视 reactive 定义的响应式数据的某个（对象）属性时，deep 有效
+
+```js
+import { watch } from 'vue'
+export default {
+  setup(){
+    let sum = ref(0);
+    let name = ref('张三');
+    let person = reactive({
+      name: '张三',
+      age: 18,
+      job:{
+        comp:'aaa'
+      }
+    })
+    // 监视一个
+    watch(sum,(newVal, oldVal) => {
+      // sum 改变了
+    })
+    // 监视多个
+    watch([sum, name], (newVal, oldVal) => {
+      // oldVal => [0, '张三']
+    }, { immediate: true })
+    // 监视 reactive 对象, 1、无法正确获取 oldVal, oldVal 和 newVal 一样
+    //                    2、强制开启了 deep: true, deep配置无效
+    watch(person, (newVal, oldVal) => {}, { deep:false })
+    // 监视某个对象属性
+    watch(()=>person.age, (newVal, oldVal) => { })
+    // 监视多个对象属性
+    watch([()=>person.age, ()=>person.name], (newVal, oldVal) => { })
+    // 监视对象的对象属性
+    watch(()=>person.job, (newVal, oldVal) => { },{deep:true}) //此处需开启deep
+    return {
+      sum,
+    }
+  })
+}
+```
