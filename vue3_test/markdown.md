@@ -115,18 +115,19 @@ const p = new Proxy(person,{
 
 #### reactive 和 ref 对比
 
--
-
+- ref 用来定义基本数据类型数据， reactive 用来定义对象（数组）类型数据。（ref 也可用来定义对象、数组类型数据，会自动通过`reactive`转为代理对象）
+- ref 通过 `Object.definedProperty()` 的 `get` 与 `set` 来实现响应式（数据劫持）。 reactive 通过使用 Proxy 来实现响应式（数据劫持）,通过 Reflect 操作源对象
+- ref 操作数据需要 .value，模板中不需要， reactive 均不需要
 
 ### setup 注意点
 
 - setup 在 beforeCreate 之前执行，this 是 undefined
 - setup 接受两个参数
-  - props: Proxy 对象，包含组件外部传递过来且组件内部声明接受了的属性
-  - context: 上下文对象
-    - attrs: 包含组件外部传递过来，但没有在 props 配置声明的属性，相当于 `this.$attrs`
-    - slots: 收到的插槽内容，相当于 `this.$slots`
-    - emit：分发自定义事件的函数，相当于 `this.$emit`
+    - props: Proxy 对象，包含组件外部传递过来且组件内部声明接受了的属性
+    - context: 上下文对象
+        - attrs: 包含组件外部传递过来，但没有在 props 配置声明的属性，相当于 `this.$attrs`
+        - slots: 收到的插槽内容，相当于 `this.$slots`
+        - emit：分发自定义事件的函数，相当于 `this.$emit`
 
 ```js
 <Demo @hello='onChildClick' msg='123' name='aaa' age='18'>
@@ -143,7 +144,7 @@ emits: ['hello'], // 父级绑定的事件
 setup: (props, context){
 // context.attrs 子级未在 props 中接受的父级传递的参数,此处为 age
 // context.emit('hello', params)  触发自定义事件
-// context.slots,使用 v-slot 会拿到正常命名的插槽，其余方式（包括 slot="xx")均为default 
+// context.slots,使用 v-slot 会拿到正常命名的插槽，其余方式（包括 slot="xx")均为default
 }
 ```
 
@@ -214,9 +215,97 @@ export default {
     watch([()=>person.age, ()=>person.name], (newVal, oldVal) => { })
     // 监视对象的对象属性
     watch(()=>person.job, (newVal, oldVal) => { },{deep:true}) //此处需开启deep
+    // 监视 ref 创建的对象
+    let obj = ref({a:1,b:2})
+    watch(obj.value,(newVal,oldVal)=>{})
+    watch(obj,(newVal,oldVal)=>{},{deep:true})
+
     return {
       sum,
     }
   })
 }
+```
+
+## watchEffect
+
+- 不用指明监视哪个属性，在监视回调中用到哪个属性就会监视哪个属性
+- 有点类似于 computed
+    - computed 注重计算出来的值，所以需要返回值
+    - watchEffect更注重结果，所以不用写返回值
+
+```js
+import { watchEffect } from 'vue'
+export default {
+  setup(){
+    // 初始化会掉一次（类似默认开启 immediate
+    watchEffect(()=>{
+      const s = sum.value;
+      const s2 = person.job.comp; // 当 person.job.comp 改变时才触发，其他属性改变不触发
+    })
+  }
+}
+```
+
+## 生命周期
+
+```js
+	import {ref,onBeforeMount,onMounted,onBeforeUpdate,onUpdated,onBeforeUnmount,onUnmounted} from 'vue'
+	export default {
+		name: 'Demo',
+
+		setup(){
+			console.log('---setup---')
+			//数据
+			let sum = ref(0)
+
+			//通过组合式API的形式去使用生命周期钩子(同名组合式 api 在配置项之前)
+			onBeforeMount(()=>{
+				console.log('---onBeforeMount---')
+			})
+			onMounted(()=>{
+				console.log('---onMounted---')
+			})
+			onBeforeUpdate(()=>{
+				console.log('---onBeforeUpdate---')
+			})
+			onUpdated(()=>{
+				console.log('---onUpdated---')
+			})
+			onBeforeUnmount(()=>{
+				console.log('---onBeforeUnmount---')
+			})
+			onUnmounted(()=>{
+				console.log('---onUnmounted---')
+			})
+
+			//返回一个对象（常用）
+			return {sum}
+		},
+		//通过配置项的形式使用生命周期钩子
+		beforeCreate() {
+			console.log('---beforeCreate---')
+		},
+		created() {
+			console.log('---created---')
+		},
+		beforeMount() {
+			console.log('---beforeMount---')
+		},
+		mounted() {
+			console.log('---mounted---')
+		},
+		beforeUpdate(){
+			console.log('---beforeUpdate---')
+		},
+		updated() {
+			console.log('---updated---')
+		},
+		beforeUnmount() {
+			console.log('---beforeUnmount---')
+		},
+		unmounted() {
+			console.log('---unmounted---')
+		},
+	}
 ```
